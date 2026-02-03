@@ -102,9 +102,12 @@ def patch_vehicle(vid: str, payload: dict, if_match: Optional[str] = Header(None
         if field in payload:
             v[field] = payload[field]
     v["updated_at"] = datetime.now(timezone.utc)
-    resp = {**v}
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    # Persist updates to MongoDB
+    updates = {k: v_val for k, v_val in v.items() if k not in ("created_at", "deleted")}
+    resp = store.update_vehicle(vid, updates)
+    if resp:
+        resp["created_at"] = resp["created_at"].isoformat()
+        resp["updated_at"] = resp["updated_at"].isoformat()
     return resp
 
 

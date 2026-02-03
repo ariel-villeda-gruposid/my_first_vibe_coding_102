@@ -66,30 +66,32 @@ def patch_assignment(aid: str, payload: dict, auth=Depends(require_auth)):
     if not a:
         raise HTTPException(status_code=404, detail={"code": "ASSIGNMENT_NOT_FOUND", "message": "Assignment not found"})
     # Only notes and end_datetime allowed
+    updates = {}
     if "notes" in payload:
         notes = payload.get("notes")
         if notes is not None:
             notes = notes.rstrip()
             if len(notes) > 127:
                 raise HTTPException(status_code=422, detail={"code": "VALIDATION_ERROR", "message": "notes too long"})
-        a["notes"] = notes
+        updates["notes"] = notes
     if "end_datetime" in payload:
         end = payload.get("end_datetime")
         if end is None:
-            a["end_datetime"] = None
+            updates["end_datetime"] = None
         else:
             # parse
             if isinstance(end, str):
                 end_dt = datetime.fromisoformat(end)
             else:
                 end_dt = end
-            a["end_datetime"] = end_dt
-    a["updated_at"] = datetime.now(timezone.utc)
-    resp = {**a}
-    resp["start_datetime"] = resp["start_datetime"].isoformat()
-    resp["end_datetime"] = resp["end_datetime"].isoformat() if resp["end_datetime"] else None
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+            updates["end_datetime"] = end_dt
+    updates["updated_at"] = datetime.now(timezone.utc)
+    resp = store.update_assignment(aid, updates)
+    if resp:
+        resp["start_datetime"] = resp["start_datetime"].isoformat()
+        resp["end_datetime"] = resp["end_datetime"].isoformat() if resp["end_datetime"] else None
+        resp["created_at"] = resp["created_at"].isoformat()
+        resp["updated_at"] = resp["updated_at"].isoformat()
     return resp
 
 
@@ -111,11 +113,13 @@ def delete_assignment(aid: str, auth=Depends(require_auth)):
     a = store.get_assignment(aid)
     if not a:
         raise HTTPException(status_code=404, detail={"code": "ASSIGNMENT_NOT_FOUND", "message": "Assignment not found"})
-    # If active, auto-close then delete; for simplicity, set end_datetime now and delete
+    # If active (end_datetime is None), auto-close it first
     now = datetime.now(timezone.utc)
-    end = a.get("end_datetime")
-    if end is None:
-        a["end_datetime"] = now
-    # perform delete (here remove from store)
-    store.assignments.pop(aid, None)
+    if a.get("end_datetime") is None:
+        # Auto-close
+        store.update_assignment(aid, {"end_datetime": now, "updated_at": now})
+    # Then delete the assignment
+    store.delete_assignment(aid)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     return Response(status_code=204)

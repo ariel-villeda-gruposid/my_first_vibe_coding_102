@@ -94,9 +94,12 @@ def patch_driver(did: str, payload: dict, if_match: Optional[str] = Header(None,
             else:
                 d[field] = payload[field]
     d["updated_at"] = datetime.now(timezone.utc)
-    resp = {**d}
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    # Persist updates to MongoDB
+    updates = {k: v for k, v in d.items() if k not in ("created_at", "deleted")}
+    resp = store.update_driver(did, updates)
+    if resp:
+        resp["created_at"] = resp["created_at"].isoformat()
+        resp["updated_at"] = resp["updated_at"].isoformat()
     return resp
 
 

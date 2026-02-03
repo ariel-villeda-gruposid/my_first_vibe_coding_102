@@ -2,6 +2,29 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+@pytest.fixture(autouse=True)
+def cleanup_mongo():
+    """Clear MongoDB collections before each test."""
+    from app.storage.mongo import get_db
+    try:
+        db = get_db()
+        db.vehicles.delete_many({})
+        db.drivers.delete_many({})
+        db.assignments.delete_many({})
+    except:
+        # MongoDB might not be available during early test collection
+        pass
+    yield
+    # Cleanup after test
+    try:
+        db = get_db()
+        db.vehicles.delete_many({})
+        db.drivers.delete_many({})
+        db.assignments.delete_many({})
+    except:
+        pass
+
+
 @pytest.fixture
 def client():
     """Test client fixture expecting an ASGI app at `app.main:app`.

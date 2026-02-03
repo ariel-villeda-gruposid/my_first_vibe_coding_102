@@ -1,7 +1,8 @@
+import os
 from typing import Dict, Optional, List
 from datetime import datetime, timezone
 
-
+# Keep the in-memory store implementation for dev/testing fallback
 class InMemoryStore:
     def __init__(self):
         self.vehicles: Dict[str, dict] = {}
@@ -69,4 +70,10 @@ class InMemoryStore:
         return result
 
 
-store = InMemoryStore()
+# If MONGO_URL env var is provided, use MongoStore; otherwise use in-memory
+if os.getenv("MONGO_URL"):
+    from app.mongo_store import MongoStore
+
+    store = MongoStore(mongo_url=os.getenv("MONGO_URL"))
+else:
+    store = InMemoryStore()
