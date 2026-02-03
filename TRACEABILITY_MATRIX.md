@@ -13,10 +13,10 @@
 | Category | Count | Status |
 |----------|-------|--------|
 | **Functional Tests** | 23 | ✅ Complete |
-| **Integration Tests** | 9 | ✅ Complete |
-| **Unit Tests** | 8 | ✅ Complete |
+| **Integration Tests** | 8 | ✅ Complete |
+| **Unit Tests** | 13 | ✅ Complete |
 | **E2E Tests** | 4 | ✅ Complete |
-| **Total Tests** | 44 | ✅ All Passing |
+| **Total Tests** | 48 | ✅ All Passing |
 | **Requirements** | 25+ | ✅ 100% Covered |
 | **Business Rules** | 18+ | ✅ 100% Covered |
 
@@ -580,9 +580,20 @@
 
 ---
 
+### Error Handling Requirements
+
+| Requirement | Test | File | Status |
+|-------------|------|------|--------|
+| **REQ_ERROR_HANDLER_FORMAT** | Error responses include code, message, details | test_http_exception_handler_returns_error_shape | unit/test_errors.py | ✅ |
+| **REQ_ERROR_META_TRACKING** | Error responses include request_id and correlation_id | test_http_exception_handler_with_string_detail_and_meta_from_state | unit/test_errors.py | ✅ |
+| **REQ_VALIDATION_ERROR_FORMAT** | Validation errors include per-field details | test_validation_exception_handler_builds_details | unit/test_errors.py | ✅ |
+| **REQ_STORAGE_INITIALIZATION** | Storage adapter initializes correctly | test_mongo_storage_initialization | unit/test_storage.py | ✅ |
+
+---
+
 ## Test Type Distribution
 
-### Functional Tests (23 tests)
+### Unit Tests (13 tests - Updated)
 Validate complete end-to-end API behavior with real HTTP requests.
 
 ```
@@ -622,11 +633,11 @@ EXTRA (1 test)
 
 ---
 
-### Integration Tests (9 tests)
+### Integration Tests (8 tests)
 Test database storage layer with real MongoDB operations.
 
 ```
-MONGO STORAGE (9 tests)
+MONGO STORAGE (8 tests)
 ├── test_db
 ├── test_create_and_get_vehicle
 ├── test_duplicate_plate_raises_error
@@ -640,8 +651,8 @@ MONGO STORAGE (9 tests)
 
 ---
 
-### Unit Tests (8 tests)
-Test individual components: schemas, utilities, storage initialization.
+### Unit Tests (13 tests)
+Test individual components: schemas, utilities, storage initialization, error handling.
 
 ```
 UTILS (3 tests)
@@ -653,10 +664,18 @@ SCHEMAS (2 tests)
 ├── test_vehicle_create_invalid_plate
 └── test_assignment_notes_trimming_and_length
 
-STORAGE (2 tests)
+STORAGE (3 tests)
 ├── test_mongo_storage_initialization
 ├── test_mongo_storage_create_vehicle_handles_duplicate
 └── test_mongo_storage_soft_delete
+
+ERROR HANDLING (3 tests)
+├── test_http_exception_handler_returns_error_shape
+├── test_http_exception_handler_with_string_detail_and_meta_from_state
+└── test_validation_exception_handler_builds_details
+
+TOTAL UNIT: 13 tests
+```
 
 ERRORS (1 test)
 └── test_error_handling
@@ -867,14 +886,14 @@ Python: 3.13.1
 Pytest: 9.0.2
 MongoDB: Docker (mongo:latest)
 
-Total Tests: 44
+Total Tests: 48
 ├── Functional: 23 ✅
-├── Integration: 9 ✅
-├── Unit: 8 ✅
+├── Integration: 8 ✅
+├── Unit: 13 ✅
 └── E2E: 4 ✅
 
 Status: ALL PASSING ✅
-Execution Time: ~5 seconds
+Execution Time: ~2 seconds
 Exit Code: 0
 ```
 
