@@ -1,0 +1,728 @@
+openapi: 3.0.3
+info:
+  title: Fleet Management API
+  version: "1.0.0"
+  description: |
+    Fleet Management API for managing Vehicles, Drivers and Assignments.
+    Versioned under /api/v1/. Authentication via Bearer JWT.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local dev server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Vehicle:
+      type: object
+      required: [id, plate_number, model, year, type, fuel_type, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        plate_number:
+          type: string
+          description: "Alphanumeric, no whitespace, max length 10. Stored normalized (uppercase)."
+          pattern: "^[A-Za-z0-9]{1,10}$"
+          maxLength: 10
+        model:
+          type: string
+        year:
+          type: integer
+          minimum: 1996
+        type:
+          type: string
+          enum: [SEDAN, SUV, TRUCK, VAN]
+        fuel_type:
+          type: string
+          enum: [GASOLINE, DIESEL, ELECTRIC, HYBRID]
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, MAINTENANCE]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    VehicleCreate:
+      type: object
+      required: [plate_number, model, year, type, fuel_type]
+      properties:
+        plate_number:
+          $ref: '#/components/schemas/Vehicle/properties/plate_number'
+        model:
+          type: string
+        year:
+          $ref: '#/components/schemas/Vehicle/properties/year'
+        type:
+          $ref: '#/components/schemas/Vehicle/properties/type'
+        fuel_type:
+          $ref: '#/components/schemas/Vehicle/properties/fuel_type'
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, MAINTENANCE]
+    Driver:
+      type: object
+      required: [id, name, license_number, contact_number, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        license_number:
+          type: string
+          description: "Alphanumeric, unique, normalized and trimmed (case-insensitive)."
+        contact_number:
+          type: string
+          description: "E.164-ish phone number; validated on write"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DriverCreate:
+      type: object
+      required: [name, license_number, contact_number]
+      properties:
+        name:
+          type: string
+        license_number:
+          type: string
+        contact_number:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+    Assignment:
+      type: object
+      required: [id, driver_id, vehicle_id, start_datetime, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        driver_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        start_datetime:
+          type: string
+          format: date-time
+        end_datetime:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 127
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AssignmentCreate:
+      type: object
+      required: [driver_id, vehicle_id, start_datetime]
+      properties:
+        driver_id:
+          type: string
+          format: uuid
+        vehicle_id:
+          type: string
+          format: uuid
+        start_datetime:
+          type: string
+          format: date-time
+        end_datetime:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          maxLength: 127
+          description: "Trailing whitespace will be trimmed."
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        skip:
+          type: integer
+        has_more:
+          type: boolean
+    ErrorDetail:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ErrorDetail'
+        meta:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            request_id:
+              type: string
+            correlation_id:
+              type: string
+  parameters:
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        maximum: 500
+    skip:
+      name: skip
+      in: query
+      schema:
+        type: integer
+        default: 0
+    sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        description: "Sort by field, prefix with - for desc (e.g. -updated_at)"
+    include_deleted:
+      name: include_deleted
+      in: query
+      schema:
+        type: boolean
+        default: false
+paths:
+  /vehicles:
+    get:
+      summary: List vehicles
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/skip'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include_deleted'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, MAINTENANCE]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  meta:
+                    type: object
+                    properties:
+                      timestamp:
+                        type: string
+                        format: date-time
+                      request_id:
+                        type: string
+                      correlation_id:
+                        type: string
+    post:
+      summary: Create vehicle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleCreate'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '409':
+          description: Conflict (e.g., duplicate plate)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /vehicles/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get vehicle by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag:
+              description: Resource ETag for conditional updates
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Partial update vehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            description: ETag value
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plate_number:
+                  $ref: '#/components/schemas/Vehicle/properties/plate_number'
+                model:
+                  type: string
+                year:
+                  $ref: '#/components/schemas/Vehicle/properties/year'
+                type:
+                  $ref: '#/components/schemas/Vehicle/properties/type'
+                fuel_type:
+                  $ref: '#/components/schemas/Vehicle/properties/fuel_type'
+                status:
+                  type: string
+                  enum: [ACTIVE, INACTIVE, MAINTENANCE]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '409':
+          description: Conflict or concurrency conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete (soft) a vehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content (soft deleted)
+        '409':
+          description: Conflict (e.g., vehicle has active assignments)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /drivers:
+    get:
+      summary: List drivers
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/skip'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include_deleted'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Driver'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  meta:
+                    type: object
+    post:
+      summary: Create driver
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '409':
+          description: Conflict (duplicate license)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /drivers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get driver by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag:
+              description: Resource ETag for conditional updates
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Partial update driver
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                license_number:
+                  type: string
+                contact_number:
+                  type: string
+                status:
+                  type: string
+                  enum: [ACTIVE, SUSPENDED]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '409':
+          description: Conflict (e.g., driver has active assignments) or concurrency
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Soft-delete driver
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content (soft deleted)
+        '409':
+          description: Conflict (driver has active assignments)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /assignments:
+    get:
+      summary: List assignments
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/skip'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include_deleted'
+        - name: driver_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: vehicle_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Assignment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                  meta:
+                    type: object
+    post:
+      summary: Create assignment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '404':
+          description: Foreign key not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict (driver suspended / vehicle inactive / overlapping assignment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error (e.g., start_datetime > end_datetime)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /assignments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get assignment by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag:
+              description: Resource ETag for conditional updates
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Update assignment (only notes and end_datetime allowed)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  maxLength: 127
+                end_datetime:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '409':
+          description: Conflict (overlap or driver/vehicle status issue)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete (auto-close active then delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content (assignment closed and deleted)
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+security:
+  - bearerAuth: []
