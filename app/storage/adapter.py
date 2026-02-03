@@ -22,18 +22,24 @@ class StorageAdapter:
     
     @property
     def vehicles(self) -> Dict:
-        """Return vehicles dict. Fetches fresh from MongoDB."""
+        """Return vehicles dict (all, including deleted). Fetches fresh from MongoDB.
+        
+        Note: Routers handle filtering based on include_deleted parameter.
+        """
         result = {}
-        docs = self.mongo.db.vehicles.find({"deleted": False})
+        docs = self.mongo.db.vehicles.find({})
         for doc in docs:
             result[doc["id"]] = _clean_doc(doc)
         return result
     
     @property
     def drivers(self) -> Dict:
-        """Return drivers dict. Fetches fresh from MongoDB."""
+        """Return drivers dict (all, including deleted). Fetches fresh from MongoDB.
+        
+        Note: Routers handle filtering based on include_deleted parameter.
+        """
         result = {}
-        docs = self.mongo.db.drivers.find({"deleted": False})
+        docs = self.mongo.db.drivers.find({})
         for doc in docs:
             result[doc["id"]] = _clean_doc(doc)
         return result

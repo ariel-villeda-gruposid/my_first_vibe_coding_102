@@ -5,6 +5,7 @@ from typing import Optional
 
 from app.schemas import AssignmentCreate
 from app.storage import store
+from app.utils import serialize_datetime, truncate_to_milliseconds
 
 router = APIRouter()
 
@@ -53,10 +54,10 @@ def create_assignment(payload: AssignmentCreate, auth=Depends(require_auth)):
     }
     store.add_assignment(assignment)
     resp = {**assignment}
-    resp["start_datetime"] = resp["start_datetime"].isoformat()
-    resp["end_datetime"] = resp["end_datetime"].isoformat() if resp["end_datetime"] else None
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["start_datetime"] = serialize_datetime(resp["start_datetime"])
+    resp["end_datetime"] = serialize_datetime(resp["end_datetime"])
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 
@@ -84,14 +85,16 @@ def patch_assignment(aid: str, payload: dict, auth=Depends(require_auth)):
                 end_dt = datetime.fromisoformat(end)
             else:
                 end_dt = end
+            # Truncate to milliseconds to match MongoDB precision
+            end_dt = truncate_to_milliseconds(end_dt)
             updates["end_datetime"] = end_dt
     updates["updated_at"] = datetime.now(timezone.utc)
     resp = store.update_assignment(aid, updates)
     if resp:
-        resp["start_datetime"] = resp["start_datetime"].isoformat()
-        resp["end_datetime"] = resp["end_datetime"].isoformat() if resp["end_datetime"] else None
-        resp["created_at"] = resp["created_at"].isoformat()
-        resp["updated_at"] = resp["updated_at"].isoformat()
+        resp["start_datetime"] = serialize_datetime(resp["start_datetime"])
+        resp["end_datetime"] = serialize_datetime(resp["end_datetime"])
+        resp["created_at"] = serialize_datetime(resp["created_at"])
+        resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 
@@ -101,10 +104,10 @@ def get_assignment(aid: str, auth=Depends(require_auth)):
     if not a:
         raise HTTPException(status_code=404, detail={"code": "ASSIGNMENT_NOT_FOUND", "message": "Assignment not found"})
     resp = {**a}
-    resp["start_datetime"] = resp["start_datetime"].isoformat()
-    resp["end_datetime"] = resp["end_datetime"].isoformat() if resp["end_datetime"] else None
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["start_datetime"] = serialize_datetime(resp["start_datetime"])
+    resp["end_datetime"] = serialize_datetime(resp["end_datetime"])
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 

@@ -161,7 +161,10 @@ def test_patch_assignment_end_datetime_parsing_and_delete_not_found(client, auth
     aid = r.json()["id"]
 
     # patch with end_datetime as ISO string
-    end_ts = datetime.now(timezone.utc).isoformat()
+    # MongoDB stores with millisecond precision, so truncate microseconds
+    now_dt = datetime.now(timezone.utc)
+    now_dt_truncated = now_dt.replace(microsecond=(now_dt.microsecond // 1000) * 1000)
+    end_ts = now_dt_truncated.isoformat()
     rp = client.patch(f"/assignments/{aid}", json={"end_datetime": end_ts}, headers=auth_headers)
     assert rp.status_code == 200
     assert rp.json()["end_datetime"] == end_ts

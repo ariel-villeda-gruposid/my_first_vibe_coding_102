@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from app.schemas import VehicleCreate, Vehicle
 from app.storage import store
-from app.utils import now_utc_iso, make_etag, normalize_plate
+from app.utils import now_utc_iso, make_etag, normalize_plate, serialize_datetime
 
 router = APIRouter()
 
@@ -26,8 +26,8 @@ def list_vehicles(request: Request, limit: int = 50, skip: int = 0, status: Opti
     data = []
     for v in sliced:
         item = {**v}
-        item["created_at"] = item["created_at"].isoformat()
-        item["updated_at"] = item["updated_at"].isoformat()
+        item["created_at"] = serialize_datetime(item["created_at"])
+        item["updated_at"] = serialize_datetime(item["updated_at"])
         data.append(item)
     has_more = skip + len(sliced) < total
     return {"success": True, "data": data, "pagination": {"total": total, "limit": limit, "skip": skip, "has_more": has_more}, "meta": {"timestamp": datetime.now(timezone.utc).isoformat(), "request_id": getattr(request.state, 'request_id', None), "correlation_id": getattr(request.state, 'correlation_id', None)}}
@@ -57,8 +57,8 @@ def create_vehicle(payload: VehicleCreate, auth=Depends(require_auth)):
     # prepare response
     resp = {**vehicle}
     # ISO format for datetimes
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 @router.get("/vehicles/{vid}")
@@ -67,8 +67,8 @@ def get_vehicle(vid: str, response: Response, auth=Depends(require_auth)):
     if not v or v.get("deleted"):
         raise HTTPException(status_code=404, detail={"code": "VEHICLE_NOT_FOUND", "message": "Vehicle not found"})
     resp = {**v}
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     etag = make_etag(resp["updated_at"])
     response.headers["ETag"] = etag
     return resp
@@ -82,7 +82,7 @@ def patch_vehicle(vid: str, payload: dict, if_match: Optional[str] = Header(None
     v = store.get_vehicle(vid)
     if not v or v.get("deleted"):
         raise HTTPException(status_code=404, detail={"code": "VEHICLE_NOT_FOUND", "message": "Vehicle not found"})
-    current_etag = make_etag(v["updated_at"].isoformat())
+    current_etag = make_etag(serialize_datetime(v["updated_at"]))
     if if_match != current_etag:
         raise HTTPException(status_code=409, detail={"code": "CONCURRENCY_CONFLICT", "message": "ETag mismatch"})
     # Business rule: cannot set to INACTIVE or MAINTENANCE if assigned
@@ -106,8 +106,8 @@ def patch_vehicle(vid: str, payload: dict, if_match: Optional[str] = Header(None
     updates = {k: v_val for k, v_val in v.items() if k not in ("created_at", "deleted")}
     resp = store.update_vehicle(vid, updates)
     if resp:
-        resp["created_at"] = resp["created_at"].isoformat()
-        resp["updated_at"] = resp["updated_at"].isoformat()
+        resp["created_at"] = serialize_datetime(resp["created_at"])
+        resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 

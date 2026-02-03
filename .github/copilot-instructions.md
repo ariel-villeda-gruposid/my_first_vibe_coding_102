@@ -1,9 +1,9 @@
 ---
 name: fleet-management-api
 description: >
-  Fleet Management API for managing Vehicles, Drivers, and Assignments.
-  Use this skill when designing models, endpoints, validations, or tests.
-  Development follows strict TDD using the Interview-Driven methodology.
+Fleet Management API for managing Vehicles, Drivers, and Assignments.
+Use this skill when designing models, endpoints, validations, or tests.
+Development follows strict TDD using the Interview-Driven methodology.
 ---
 
 # Fleet Management API – Copilot Skill File

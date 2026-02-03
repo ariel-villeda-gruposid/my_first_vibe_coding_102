@@ -6,6 +6,7 @@ import re
 
 from app.schemas import DriverCreate
 from app.storage import store
+from app.utils import serialize_datetime
 
 router = APIRouter()
 
@@ -45,8 +46,8 @@ def create_driver(payload: DriverCreate, auth=Depends(require_auth)):
     }
     store.add_driver(driver)
     resp = {**driver}
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 
@@ -56,8 +57,8 @@ def get_driver(did: str, response: Response, auth=Depends(require_auth)):
     if not d or d.get("deleted"):
         raise HTTPException(status_code=404, detail={"code": "DRIVER_NOT_FOUND", "message": "Driver not found"})
     resp = {**d}
-    resp["created_at"] = resp["created_at"].isoformat()
-    resp["updated_at"] = resp["updated_at"].isoformat()
+    resp["created_at"] = serialize_datetime(resp["created_at"])
+    resp["updated_at"] = serialize_datetime(resp["updated_at"])
     # ETag
     response.headers["ETag"] = f'"{resp["updated_at"]}"'
     return resp
@@ -70,7 +71,7 @@ def patch_driver(did: str, payload: dict, if_match: Optional[str] = Header(None,
     d = store.get_driver(did)
     if not d or d.get("deleted"):
         raise HTTPException(status_code=404, detail={"code": "DRIVER_NOT_FOUND", "message": "Driver not found"})
-    current_etag = f'"{d["updated_at"].isoformat()}"'
+    current_etag = f'"{serialize_datetime(d["updated_at"])}"'
     if if_match != current_etag:
         raise HTTPException(status_code=409, detail={"code": "CONCURRENCY_CONFLICT", "message": "ETag mismatch"})
     # If changing status to SUSPENDED, ensure no active assignments
@@ -98,8 +99,8 @@ def patch_driver(did: str, payload: dict, if_match: Optional[str] = Header(None,
     updates = {k: v for k, v in d.items() if k not in ("created_at", "deleted")}
     resp = store.update_driver(did, updates)
     if resp:
-        resp["created_at"] = resp["created_at"].isoformat()
-        resp["updated_at"] = resp["updated_at"].isoformat()
+        resp["created_at"] = serialize_datetime(resp["created_at"])
+        resp["updated_at"] = serialize_datetime(resp["updated_at"])
     return resp
 
 
